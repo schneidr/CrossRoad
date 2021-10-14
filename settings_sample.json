@@ -1,0 +1,14 @@
+{
+    "browsers":[
+        {
+            "name": "Firefox",
+            "commandLine": "\"C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe\" -no-remote -P Profile",
+            "icon": "C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe,1"
+        },
+        {
+            "name": "Chrome",
+            "commandLine": "\"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe\" --profile-directory=\"Default\"",
+            "icon": "C:\\Users\\geschnei\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Google Profile.ico"
+        }
+    ]
+}

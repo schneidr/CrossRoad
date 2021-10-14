@@ -1,0 +1,10 @@
+[package]
+name = "cross_road"
+version = "0.1.0"
+authors = ["Gerald Schneider <gerald@schneidr.de>"]
+edition = "2018"
+
+[dependencies] 
+nwg = {version = "^1.0.12", package = "native-windows-gui"}
+serde = { version = "1.0.104", features = ["derive"] }
+serde_json = "1.0.48"
