@@ -1,8 +1,13 @@
+#![windows_subsystem = "windows"]
+
+use nwg::Button;
+use nwg::WindowFlags;
+use std::process::Command;
+use serde::Deserialize;
 use std::env;
 use std::fs;
 use std::rc::Rc;
-use nwg::Button;
-use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,7 +20,26 @@ struct Settings {
 struct Browser {
     name: String,
     command_line: String,
+    arguments: Vec<String>,
     icon: String,
+}
+
+fn run_browser(browser: &Browser, url: String) {
+    let mut arguments: Vec<String> = Vec::new();
+    for argument in &browser.arguments {
+        arguments.push(argument.clone());
+    }
+    arguments.push(url);
+    
+    let _process = match Command::new(&browser.command_line)
+        .args(arguments)
+        .spawn() {
+            Ok(process) => process,
+            Err(err)    => panic!("Running process error: {}", err),
+        };
+
+    nwg::stop_thread_dispatch();
+    std::process::exit(0);
 }
 
 fn main() {
@@ -26,17 +50,24 @@ fn main() {
     let mut url_edit = Default::default();
     let layout = Default::default();
 
-    let settings_file = fs::read_to_string("settings.json").expect("Unable to read settings.json");
-    let settings: Settings = serde_json::from_str(&settings_file).expect("Error reading settings.json");
-
+    let appdata = env::var("APPDATA").unwrap();
+    let settings_filepath = format!("{}/CrossRoad/settings.json", appdata);
+    let settings_file = fs::read_to_string(settings_filepath).expect("Unable to read settings.json");
+    let parsed_settings: Settings = serde_json::from_str(&settings_file).expect("Error reading settings.json");
+    let settings = Arc::new(parsed_settings);
+    
     let mut buttons: Vec<Button> = Vec::new(); 
 
     let args: Vec<String> = env::args().collect();
-    let url = &args[1];
+    let mut url="";
+    if args.len() > 1 {
+        url = &args[1];
+    }
 
     nwg::Window::builder()
+        .center(true)
         .size((600, 250))
-        // .position((300, 300))
+        .flags(WindowFlags::WINDOW | WindowFlags::POPUP)
         .title("CrossRoad")
         .build(&mut window)
         .unwrap();
@@ -51,15 +82,15 @@ fn main() {
     let mut buttons_layout = nwg::GridLayout::builder()
         .parent(&window)
         .spacing(1)
-        // .child(0, 0, &url_edit);
         .child_item(nwg::GridLayoutItem::new(&url_edit, 0, 0, settings.browsers.len() as u32, 1));
 
     let mut button_count = 0;
-    for browser in settings.browsers {
-        println!("{:?}", browser);
+    for browser in &settings.browsers {
         let mut button = Default::default();
+        // let browser_icon = nwg::Icon::from_file(&browser.icon, true).unwrap();
         nwg::Button::builder()
         .text(&browser.name)
+        // .icon(&browser_icon)
         .parent(&window)
         .build(&mut button)
         .unwrap();
@@ -72,6 +103,7 @@ fn main() {
         .unwrap();
 
     let window = Rc::new(window);
+    window.set_visible(true);
     let events_window = window.clone();
 
     let handler = nwg::full_bind_event_handler(&window.handle, move |evt, _evt_data, handle| {
@@ -80,24 +112,18 @@ fn main() {
         match evt {
             E::OnWindowClose => 
                 if &handle == &events_window as &nwg::Window {
-                    // nwg::modal_info_message(&events_window.handle, "Goodbye", &format!("Goodbye {}", url_edit.text()));
                     nwg::stop_thread_dispatch();
                 },
             E::OnButtonClick => 
                 for button in &buttons {
                     if &handle == &button.handle {
-                        println!("{:?}", button.text());
-                        // for browser in settings.browsers {
-                        //     if &browser.name == &button.text() {
-                        //         println!("{} {}", browser.command_line, url_edit.text());
-                        //     }
-                        // }
+                        for browser in &settings.browsers {
+                            if &browser.name == &button.text() {
+                                run_browser(&browser, url_edit.text());
+                            }
+                        }
                     }
                 },
-            // E::OnButtonClick => 
-            //     if &handle == &hello_button {
-            //         nwg::modal_info_message(&events_window.handle, "Hello", &format!("Hello {}", url_edit.text()));
-            //     },
             _ => {}
         }
     });
